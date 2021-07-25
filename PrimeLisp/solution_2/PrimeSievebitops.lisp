@@ -9,7 +9,8 @@
   (optimize (speed 3) (safety 0) (debug 0) (space 0))
 
   (inline nth-bit-set-p)
-  (inline set-nth-bit))
+  (inline set-nth-bit)
+  (inline set-bits))
 
 
 (defparameter *list-to* 100
@@ -80,18 +81,27 @@
          (logior #1# (expt 2 r)))) 0)
 
 
+(defun set-bits (bits first-incl last-excl every-nth)
+  (declare (type fixnum first-incl last-excl every-nth)
+           (type sieve-array-type bits))
+  (loop for num of-type fixnum
+        from first-incl
+        to (1- last-excl)
+        by every-nth
+        do (set-nth-bit bits num)))
+
+
 (defun run-sieve (sieve-state)
   (declare (type sieve-state sieve-state))
 
   (let* ((rawbits (sieve-state-a sieve-state))
          (sieve-size (sieve-state-maxints sieve-state))
-         (sieve-sizeh (floor (1+ sieve-size) 2))
-         (q (floor (sqrt sieve-size)))
-         (qh (floor (1+ q) 2)))
-    (declare (fixnum sieve-size sieve-sizeh q qh) (type sieve-array-type rawbits))
+         (sieve-sizeh (ceiling sieve-size 2))
+         (qh (ceiling (floor (sqrt sieve-size)) 2)))
+    (declare (fixnum sieve-size sieve-sizeh qh) (type sieve-array-type rawbits))
     (do ((factor 0)
          (factorh 1))
-        ((> factorh qh))
+        (nil)
       (declare (fixnum factor factorh))
 
       (loop for num of-type fixnum
@@ -101,11 +111,10 @@
             finally (setq factor (1+ (* num 2)))
                     (setq factorh (1+ num)))
 
-      (loop for num of-type fixnum
-            from (floor (the fixnum (* factor factor)) 2)
-            to (1- sieve-sizeh)
-            by factor
-            do (set-nth-bit rawbits num)))
+      (when (> factorh qh)
+        (return-from run-sieve sieve-state))
+
+      (set-bits rawbits (floor (the fixnum (* factor factor)) 2) sieve-sizeh factor))
     sieve-state))
 
 
